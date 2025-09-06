@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batalha de RPG Educacional</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div id="setup-screen">
+        <h1>Configuração da Batalha</h1>
+
+        <section class="setup-section">
+            <h2>Jogadores (max. 8)</h2>
+            <div id="players-list"></div>
+            <div class="add-player-form">
+                <input type="text" id="playerName" placeholder="Nome do Jogador">
+                <button id="addPlayerBtn">Adicionar Jogador</button>
+            </div>
+            <p id="player-error" class="error-message"></p>
+        </section>
+
+        <!-- Modal de seleção de avatar
+        <div id="avatar-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h3>Escolha um Avatar</h3>
+                <div id="avatar-selection" class="avatar-grid"></div>
+            </div>
+        </div> -->
+
+        <div class="setup-section">
+            <h2>Perguntas</h2>
+            <textarea id="questions-list" rows="8" placeholder="Digite uma pergunta por linha..."></textarea>
+            <label><input type="checkbox" id="shuffle-questions"> Embaralhar ordem das perguntas</label>
+        </div>
+
+        <div class="setup-section">
+            <h2>Configurações de Vida (HP) dos Jogadores</h2>
+            <label for="player-hp">HP Inicial dos Jogadores:</label>
+            <input type="number" id="player-hp" value="5" min="1">
+            <label for="hp-mode">Modo de Vida:</label>
+            <select id="hp-mode">
+                <option value="shared">Compartilhada (um HP para todos)</option>
+                <option value="individual">Individual (cada jogador com seu HP)</option>
+            </select>
+            <label><input type="checkbox" id="reset-hp-on-level-up"> Recuperar todo o HP ao passar de nível</label>
+        </div>
+
+        <div class="setup-section">
+            <h2>Níveis e vilões</h2>
+            <div id="level-settings-container">
+                </div>
+            <div class="button-group">
+                <button id="add-level-btn" type="button" class="btn-add">+ Adicionar Nível</button>
+                <button id="remove-level-btn" type="button" class="btn-remove">- Remover Último</button>
+            </div>
+        </div>
+
+        <div class="setup-section">
+            <h2>Modo História</h2>
+            <label>
+                <input type="checkbox" id="enable-story-mode" checked>
+                Ativar modo história
+            </label>
+            <label for="story-selection">Escolha uma história:</label>
+            <select id="story-selection">
+                <option value="random">Aleatória</option>
+                <option value="1">História 1: A Flor da Montanha do Sol Poente</option>
+                <option value="2">História 2: O Vilão Aprisionado</option>
+                <option value="3">História 3: A Fuga Através do Império</option>
+                <option value="4">História 4: O Explorador Perdido</option>
+                <option value="5">História 5: O Dragão dos Desejos</option>
+                <option value="6">História 6: O Reino Despedaçado</option>
+                <option value="7">História 7: O Cajado Lendário</option>
+            </select>
+        </div>
+
+        <button id="start-game-btn">INICIAR JOGO</button>
+    </div>
+
+    <div id="intro-cutscene" class="hidden transition-overlay">
+        <div id="intro-bg" class="cutscene-bg"></div>
+        <div id="intro-text" class="scrolling-text"></div>
+    </div>
+
+
+    <div id="game-screen" class="hidden">
+        <div id="game-info-area">
+            <h3 id="turn-indicator">É a vez de: Jogador 1</h3>
+            <p id="question-display">Aqui vai a pergunta para o estudante responder.</p>
+            <div id="timer-display">--</div>
+        </div>
+    
+        <div id="characters-wrapper">
+            <div id="player-area">
+                <h2>Heróis</h2>
+                <div id="player-art" class="art-placeholder"></div>
+                <div class="hp-bar-container">
+                    <div id="player-hp-bar" class="hp-bar player-hp"></div>
+                </div>
+                <p id="player-hp-text">HP: 5 / 5</p>
+            </div>
+            <div id="villain-area">
+                <h2 id="villain-name-display">Nome do Vilão</h2>
+                <div id="villain-art" class="art-placeholder"></div>
+                <div class="hp-bar-container">
+                    <div id="villain-hp-bar" class="hp-bar villain-hp"></div>
+                </div>
+                <p id="villain-hp-text">HP: 10 / 10</p>
+            </div>
+        </div>
+    
+        <div id="teacher-controls">
+            <p>Professor, avalie a resposta:</p>
+            <div class="buttons-wrapper">
+                <button id="correct-btn">Correta</button>
+                <button id="incorrect-btn">Incorreta</button>
+                <button id="skip-btn" class="btn-skip">Pular</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="transition-screen" class="hidden transition-overlay">
+        <h2 id="transition-message">Prepare-se, Jogador X!</h2>
+        <p id="transition-timer">5</p>
+        <div id="level-progress-bar" class="timeline-bar"></div>
+    </div>
+
+    <div id="victory-screen" class="hidden transition-overlay">
+        <div id="victory-art" class="art-placeholder"></div>
+        <h2 id="victory-message">VILÃO DERROTADO!</h2>
+        <p>Indo para o próximo nível...</p>
+    </div>
+    
+    <div id="game-over-screen" class="hidden transition-overlay">
+        <div id="game-over-art" class="art-placeholder"></div>
+        <h2 id="game-over-message">FIM DE JOGO!</h2>
+        <div id="defeated-players-art-container">
+            </div>
+        <button onclick="window.location.reload()">Jogar Novamente</button>
+    </div>
+
+    <div id="final-victory-screen" class="hidden transition-overlay">
+        <div id="ending-bg" class="cutscene-bg"></div>
+        <div id="ending-text" class="scrolling-text"></div>
+    </div>
+
+    <div id="avatar-selection-modal" class="hidden">
+        <div class="avatar-modal-content">
+            <h2>Escolha seu Avatar</h2>
+            <div id="avatar-grid"></div>
+        </div>
+    </div>
+
+    <!-- Overlay de Evento Aleatório -->
+    <div id="event-overlay" class="hidden transition-overlay">
+        <div id="event-bg" class="event-content">
+            <div class="event-characters">
+                <div id="event-player-art" class="art-placeholder"></div>
+                <div id="event-npc-art" class="art-placeholder"></div>
+            </div>
+            <div class="dialogue-box">
+                <p id="dialogue-text"></p>
+                <button id="next-dialogue-btn">Próximo</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
