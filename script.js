@@ -712,9 +712,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // monta itens
             const itens = [
-                { img: "itens/pocao.png", desc: "Poção: restaura toda a sua vida", efeito: "pocao" },
-                { img: "itens/escudo.png", desc: "Escudo: bloqueia o próximo dano", efeito: "escudo" },
-                { img: "itens/espada.png", desc: "Espada: triplica o próximo ataque", efeito: "espada" }
+                { img: "itens/item3.png", desc: "Poção: restaura toda a sua vida", efeito: "pocao" },
+                { img: "itens/item1.png", desc: "Escudo: bloqueia o próximo dano", efeito: "escudo" },
+                { img: "itens/item2.png", desc: "Espada: triplica o próximo ataque", efeito: "espada" }
             ];
 
             const itemContainer = document.createElement("div");
@@ -1128,3 +1128,4 @@ document.addEventListener('DOMContentLoaded', () => {
     addLevelConfig();
     addPlayerConfig();
 });
+
