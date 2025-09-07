@@ -1,15 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ######################################################################
-    // ### ÁREA DE CONFIGURAÇÃO DAS ARTES (AVATARES) ###
-    // QUANDO TIVER SUAS ARTES, BASTA MUDAR OS LINKS (URLS) NESTA SEÇÃO
-    // ######################################################################
-
     const placeholderUrl = (text, w = 250, h = 200, color = '333') => `https://via.placeholder.com/${w}x${h}/${color}/FFFFFF?text=${encodeURIComponent(text)}`;
 
     let answerLocked = false;
 
-// === HERÓIS PERSONALIZADOS (carregados automaticamente pelo padrão de nomes) ===
     let playerAvatarSets = [];
     const totalHeroes = 12; // Quantidade atual de heróis que você já colocou na pasta
 
@@ -460,7 +454,15 @@ document.addEventListener('DOMContentLoaded', () => {
             sharedPlayerHP: parseInt(document.getElementById('player-hp').value),
             currentVillainHP: 0,
             victoriesSinceLastEvent: 0,
+            enemiesDefeated: 0,
         };
+
+        // Normaliza os HPs para o valor configurado (evita que fique maior que o máximo)
+        if (gameState.hpMode === 'individual') {
+            gameState.players.forEach(p => p.hp = gameState.initialPlayerHP);
+        } else {
+            gameState.sharedPlayerHP = gameState.initialPlayerHP;
+        }
 
         if (document.getElementById('enable-story-mode').checked) {
             const storySelection = document.getElementById('story-selection').value;
@@ -608,11 +610,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (gameState.hpMode === 'shared') {
-                gameState.sharedPlayerHP -= damageToPlayer;
-                if (gameState.sharedPlayerHP < 0) gameState.sharedPlayerHP = 0;
+                // aplica dano e garante que fique entre 0 e initialPlayerHP
+                gameState.sharedPlayerHP = Math.max(0, Math.min(gameState.initialPlayerHP, (gameState.sharedPlayerHP || 0) - damageToPlayer));
             } else {
-                player.hp -= damageToPlayer;
-                if (player.hp < 0) player.hp = 0;
+                // aplica dano no jogador atual e garante limites
+                player.hp = Math.max(0, Math.min(gameState.initialPlayerHP, (player.hp || 0) - damageToPlayer));
             }
 
             // hit no herói
@@ -658,17 +660,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let mercadorUsado = false;
 
     function triggerRandomEvent(callback) {
-        // Protege contra cutscenes nos 3 primeiros turnos
-        if (gameState.currentLevelIndex < 1 && gameState.currentQuestionIndex < 3) {
-            callback();
-            return;
-        }
-
-        // Decide se vai chamar fada, mercador, ou NPC comum
-        const opcoes = [];
-        if (!fadaUsada) opcoes.push("fada");
-        if (!mercadorUsado) opcoes.push("mercador");
-        opcoes.push("npc"); // sempre pode cair no modo NPC normal
+        // Construir opções: NPC sempre presente; fada/mercador só se já houver 3 inimigos derrotados
+        const opcoes = ["npc"];
+        if (!fadaUsada && (gameState.enemiesDefeated || 0) >= 3) opcoes.push("fada");
+        if (!mercadorUsado && (gameState.enemiesDefeated || 0) >= 3) opcoes.push("mercador");
 
         const escolha = opcoes[Math.floor(Math.random() * opcoes.length)];
 
@@ -691,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("next-dialogue-btn").onclick = () => {
                 overlay.classList.add("hidden");
 
-                // efeito: restaura HP
+                // efeito: restaura HP (garantindo limites)
                 if (gameState.hpMode === "shared") {
                     gameState.sharedPlayerHP = gameState.initialPlayerHP;
                 } else {
@@ -705,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-            // === EVENTO MERCADOR ===
+        // === EVENTO MERCADOR ===
         if (escolha === "mercador") {
             mercadorUsado = true;
             const overlay = document.getElementById("event-overlay");
@@ -715,35 +710,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("event-player-art").style.backgroundImage = `url('${vencedor.avatar.pose_padrao}')`;
             document.getElementById("event-npc-art").style.backgroundImage = "url('artes/mercador.png')";
 
-            const dialogueText = document.getElementById("dialogue-text");
-            dialogueText.textContent = "Hoje é seu dia de sorte, parceiro! Vou ajudá-lo na sua jornada... Escolha gratuitamente um item do meu estoque.";
+            // monta itens
+            const itens = [
+                { img: "itens/pocao.png", desc: "Poção: restaura toda a sua vida", efeito: "pocao" },
+                { img: "itens/escudo.png", desc: "Escudo: bloqueia o próximo dano", efeito: "escudo" },
+                { img: "itens/espada.png", desc: "Espada: triplica o próximo ataque", efeito: "espada" }
+            ];
 
-            // Remove container anterior se existir (proteção contra duplicidade)
-            const prevContainer = document.querySelector('#event-overlay .merchant-items-container');
-            if (prevContainer) prevContainer.remove();
-
-            // Cria um container overlay centralizado (será filho de #event-overlay)
             const itemContainer = document.createElement("div");
             itemContainer.className = "merchant-items-container";
-
-            // fallback de estilo inline (o CSS abaixo também vai garantir a aparência)
-            itemContainer.style.position = "absolute";
-            itemContainer.style.top = "50%";
-            itemContainer.style.left = "50%";
-            itemContainer.style.transform = "translate(-50%, -50%)";
-            itemContainer.style.zIndex = "1000";
-
-            const itens = [
-                { img: "artes/item1.png", desc: "Escudo divino: protege você contra um ataque inimigo.", efeito: "escudo" },
-                { img: "artes/item2.png", desc: "Espada lendária: seu próximo ataque causa o triplo de dano.", efeito: "espada" },
-                { img: "artes/item3.png", desc: "Poção de cura: recupera toda a vida de um jogador.", efeito: "pocao" }
-            ];
 
             itens.forEach(item => {
                 const div = document.createElement("div");
                 div.className = "merchant-item";
 
-                // estrutura do card do item
                 const img = document.createElement("img");
                 img.src = item.img;
                 img.style.width = "100%";
@@ -758,10 +738,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 div.appendChild(img);
                 div.appendChild(p);
 
-                // clique no item: aplica efeito e fecha overlay
+                // Desabilita poção se já estiver com vida cheia (visual + bloqueio de clique)
+                if (item.efeito === "pocao") {
+                    let cheio = (gameState.hpMode === "shared")
+                        ? (gameState.sharedPlayerHP >= gameState.initialPlayerHP)
+                        : (vencedor.hp >= gameState.initialPlayerHP);
+
+                    if (cheio) {
+                        div.classList.add("disabled");
+                        div.style.pointerEvents = "none";
+                    }
+                }
+
                 div.onclick = () => {
                     if (item.efeito === "pocao") {
-                        // poção: cura imediata
+                        // poção: cura imediata (garante limites)
                         if (gameState.hpMode === "shared") {
                             gameState.sharedPlayerHP = gameState.initialPlayerHP;
                         } else {
@@ -774,30 +765,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         vencedor.itemEspecial = item.efeito;
                     }
 
-                    // remove container e fecha overlay
                     const container = document.querySelector('#event-overlay .merchant-items-container');
                     if (container) container.remove();
                     overlay.classList.add("hidden");
 
-                    // remove handler temporário (precaução)
                     const nextBtn = document.getElementById("next-dialogue-btn");
                     if (nextBtn) nextBtn.onclick = null;
 
-                    // chama callback para continuar o fluxo
                     callback();
                 };
 
                 itemContainer.appendChild(div);
             });
 
-            // anexa no overlay (fica por cima da cena)
             overlay.appendChild(itemContainer);
-
-            // NÃO habilitamos next-dialogue-btn aqui — o jogador escolhe pelo overlay
             return;
         }
 
-        // === NPC NORMAL (já existente) ===
+        // === NPC NORMAL ===
         const tiposDisponiveis = Object.keys(npcTypes).filter(tipo =>
             npcTypes[tipo].some(npc => !npcsUsados.has(npc))
         );
@@ -815,12 +800,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let frasesDisponiveis = eventTexts[tipo].filter(f => !eventTexts.usadas.has(f));
         if (frasesDisponiveis.length === 0) {
             eventTexts.usadas.clear();
-            frasesDisponiveis = [...eventTexts[tipo]];
+            frasesDisponiveis = eventTexts[tipo];
         }
         let frase = frasesDisponiveis[Math.floor(Math.random() * frasesDisponiveis.length)];
         eventTexts.usadas.add(frase);
 
-        document.getElementById("event-bg").style.backgroundImage = `url('${currentBackground}')`;
+                document.getElementById("event-bg").style.backgroundImage = `url('${currentBackground}')`;
         document.getElementById("event-player-art").style.backgroundImage = `url('${vencedor.avatar.pose_padrao}')`;
         document.getElementById("event-npc-art").style.backgroundImage = `url('${npcEscolhido}')`;
 
@@ -857,13 +842,73 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // --- Função que mostra o cutscene final usando o texto de "ending" em gameState.story
+    function showEndingCutscene() {
+        // garante que o timer e input estejam desativados
+        try { clearInterval(timerInterval); } catch(e) {}
+        timerInterval = null;
+        answerLocked = true;
+
+        // esconde telas que possam estar visíveis
+        if (victoryScreen) victoryScreen.classList.add('hidden');
+        if (transitionScreen) transitionScreen.classList.add('hidden');
+        if (gameOverScreen) gameOverScreen.classList.add('hidden');
+        if (gameScreen) gameScreen.classList.add('hidden');
+
+        // pega elementos do HTML
+        const ending = document.getElementById("final-victory-screen");
+        const textEl = document.getElementById("ending-text");
+
+        // usa exatamente o "ending" da história selecionada em gameState.story
+        const text = (gameState && gameState.story && gameState.story.ending)
+            ? gameState.story.ending
+            : "Parabéns, heróis! Vocês venceram todos os desafios.";
+
+        // coloca o texto
+        textEl.textContent = text;
+
+        // reinicia a animação de rolagem do texto (mesma técnica usada para a intro)
+        textEl.style.animation = 'none';
+        void textEl.offsetWidth; // forçar reflow
+        // calcula duração baseada no tamanho do texto (ms)
+        const baseSpeed = 120; // ms por caractere
+        const minDuration = 4000;  // 4s mínimo
+        const maxDuration = 60000; // 60s máximo
+        const duration = Math.min(Math.max(text.length * baseSpeed, minDuration), maxDuration);
+        textEl.style.animation = `scrollText ${duration}ms linear forwards`;
+
+        // mostra o overlay final
+        ending.classList.remove('hidden');
+        ending.classList.add('cutscene-active');
+
+        // evita botão duplicado: remove antigo se existir
+        const existingBtn = document.getElementById('final-restart-btn');
+        if (existingBtn) existingBtn.remove();
+
+        // cria botão para reiniciar o jogo
+        const btn = document.createElement("button");
+        btn.id = "final-restart-btn";
+        btn.textContent = "Jogar Novamente";
+        btn.onclick = () => window.location.reload();
+
+        // adiciona o botão (se quiser outro local, mova esta linha)
+        ending.appendChild(btn);
+    }
+
     function levelWon() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+
         // evita que a rotina de "level won" rode duas vezes em casos de reentradas
         if (gameState.handlingLevelWin) return;
         gameState.handlingLevelWin = true;
 
         // Salva o herói vencedor antes de trocar para o próximo jogador/nível
         gameState.lastWinner = gameState.players[gameState.currentPlayerIndex];
+
+        // Conta que um inimigo foi derrotado (usado para liberar fada/mercador)
+        gameState.enemiesDefeated = (gameState.enemiesDefeated || 0) + 1;
+
         
         const level = gameState.levels[gameState.currentLevelIndex];
         document.getElementById('victory-art').style.backgroundImage = `url('${level.avatar.pose_derrota}')`;
@@ -920,6 +965,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function gameOver() {
+
+        clearInterval(timerInterval);
+        timerInterval = null;
+
         const level = gameState.levels[gameState.currentLevelIndex];
         document.getElementById('game-over-art').style.backgroundImage = `url('${level.avatar.pose_vitoria}')`;
         document.getElementById('game-over-message').textContent = `${level.villainName} venceu desta vez.`;
@@ -1079,4 +1128,3 @@ document.addEventListener('DOMContentLoaded', () => {
     addLevelConfig();
     addPlayerConfig();
 });
-
